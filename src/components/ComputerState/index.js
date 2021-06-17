@@ -2,114 +2,120 @@ import React from 'react';
 import { Form, FormGroup, Label, Input } from 'reactstrap';
 import Button from '@material-ui/core/Button';
 
-const ComputerState = ({ onSubmit, error }) => {
+const ComputerState = ({ onSubmit, error, showStep, registersAndFlags, handleStep }) => {
+	const { SC, AR, IR, DR, AC, TR, INPR, OUTR, I, S, E, R, IEN, FGI, FGO } = registersAndFlags;
 	return (
 		<div className="p-4" style={{ width: '30%', backgroundColor: '#b3e5fc', borderRadius: '10%' }}>
 			<Form>
 				<div className="row">
-					<div className="col col-3" />
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>SC:</Label>
-							<Input disabled />
+							<Input defaultValue={SC} defaultValue="0" disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>AR:</Label>
-							<Input disabled />
+							<Input defaultValue={AR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>IR:</Label>
-							<Input disabled />
+							<Input defaultValue={IR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-3" />
-					<div className="col col-3" />
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>DR:</Label>
-							<Input disabled />
+							<Input defaultValue={DR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-2 mt-4">
+					<div className="col  col-lg-4 mt-4">
 						<FormGroup>
 							<Label>AC:</Label>
-							<Input disabled />
+							<Input defaultValue={AC} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>TR:</Label>
-							<Input disabled />
+							<Input defaultValue={TR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-3" />
-					<div className="col col-4" />
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-3 mt-4">
 						<FormGroup>
 							<Label>INPR:</Label>
-							<Input disabled />
+							<Input defaultValue={INPR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-2 mt-4">
+					<div className="col col-lg-3 mt-4">
 						<FormGroup>
 							<Label>OUTR:</Label>
-							<Input disabled />
+							<Input defaultValue={OUTR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-4" />
-					<div className="col col-4" />
-					<div className="col col-1 mt-4">
+					<div className="col col-lg-5" />
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>I:</Label>
-							<Input disabled />
+							<Input defaultValue={I} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-1 mt-4">
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>S:</Label>
-							<Input disabled />
+							<Input defaultValue={S} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-1 mt-4">
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>E:</Label>
-							<Input disabled />
+							<Input defaultValue={E} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-1 mt-4">
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>R:</Label>
-							<Input disabled />
+							<Input defaultValue={R} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-4" />
-					<div className="col col-4" />
-					<div className="col col-1 mt-4">
+					<div className="col col-lg-4" />
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>IEN:</Label>
-							<Input disabled />
+							<Input defaultValue={IEN} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-1 mt-4">
+					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>FGI:</Label>
-							<Input disabled />
+							<Input defaultValue={FGI} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-1 my-4">
+					<div className="col col-lg-2 my-4">
 						<FormGroup>
 							<Label>FGO:</Label>
-							<Input disabled />
+							<Input defaultValue={FGO} defaultValue="0" disabled />
 						</FormGroup>
 					</div>
 				</div>
 				<Button form="my-form" type="submit" onClick={onSubmit} className="mt-3" variant="contained" color="secondary">
-					Run
+					Compile & Run
 				</Button>
+				{showStep && (
+					<Button
+						onClick={handleStep}
+						form="my-form"
+						style={{ marginLeft: '5%' }}
+						className="mt-3"
+						variant="contained"
+						color="primary"
+					>
+						Step
+					</Button>
+				)}
 				{error ? <p className="text-danger mt-3">{error}</p> : null}
 			</Form>
 		</div>
