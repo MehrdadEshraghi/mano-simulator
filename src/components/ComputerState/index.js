@@ -1,7 +1,8 @@
 import React from 'react';
-import { Col, Row, Form, FormGroup, Label, Input } from 'reactstrap';
+import { Form, FormGroup, Label, Input } from 'reactstrap';
+import Button from '@material-ui/core/Button';
 
-const ComputerState = () => {
+const ComputerState = ({ onSubmit, error }) => {
 	return (
 		<div className="p-4" style={{ width: '30%', backgroundColor: '#b3e5fc', borderRadius: '10%' }}>
 			<Form>
@@ -106,6 +107,10 @@ const ComputerState = () => {
 						</FormGroup>
 					</div>
 				</div>
+				<Button form="my-form" type="submit" onClick={onSubmit} className="mt-3" variant="contained" color="secondary">
+					Run
+				</Button>
+				{error ? <p className="text-danger mt-3">{error}</p> : null}
 			</Form>
 		</div>
 	);
