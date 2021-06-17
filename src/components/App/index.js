@@ -67,29 +67,60 @@ const instructions = {
 	}
 };
 
+const createToInt = (size) => {
+	if (size < 2) throw new Error('Minimum size is 2');
+	else if (size > 64) throw new Error('Maximum size is 64');
+
+	const maxValue = (1 << (size - 1)) - 1;
+	const minValue = -maxValue - 1;
+	return (value) => {
+		if (value > maxValue || value < minValue) throw new Error(`Int${size} overflow`);
+
+		if (value < 0) return (1 << size) + value;
+		else return value;
+	};
+};
+
 function App() {
 	const [ error, setError ] = useState('');
-	const [ code, setCode ] = useState([]);
 	const [ infoTable, setInfoTable ] = useState([]);
+	const [ showStep, setShowStep ] = useState(false);
+	const [ registersAndFlags, setRegistersAndFlags ] = useState({
+		SC: '0',
+		AR: '000',
+		IR: '0000',
+		DR: '0000',
+		AC: '0000',
+		TR: '0000',
+		INPR: '00',
+		OUTR: '00',
+		I: '0',
+		S: '0',
+		E: '0',
+		R: '0',
+		IEN: '0',
+		FGI: '0',
+		FGO: '0'
+	});
+
+	const handleStep = () => {
+		console.log('salam');
+	};
 
 	const handleError = (type, line) => {
-		setCode([]);
-		if (type === 'syntax' || type === 'invalidInstruction' || type === 'noAddress' || type === 'invalidLabel') {
+		if (type === 'syntax' || type === 'invalidInstruction' || type === 'noAddress' || type === 'invalidLabel')
 			setError(errorsText[type] + line);
-		} else {
-			setError(errorsText[type]);
-		}
+		else setError(errorsText[type]);
 		return false;
 	};
 
 	const onSubmit = (values) => {
+		setInfoTable([]);
 		if (!values.code) return;
 		setError('');
 		const { code } = values;
 		const lines = code.split('\n');
-		const isErrorFree = compiler(lines);
-		if (!isErrorFree) return;
-		setCode(lines);
+		compiler(lines) ? setShowStep(true) : setShowStep(false);
 	};
 
 	const compiler = (lines) => {
@@ -118,14 +149,28 @@ function App() {
 					labels[label].value = parseInt(words[2]);
 				}
 			}
-			// console.log(labels);
-			infoTableTemp.push({
-				label: words[0][words[0].length - 1] === ',' ? label : null,
-				address: lineCounter,
-				instruction: words[0][words[0].length - 1] === ',' ? words.slice(1).join(' ') : lines[i],
-				HEX: null
-			});
-			// console.log(infoTable);
+			try {
+				const toInt16 = createToInt(16);
+				let number = toInt16(labels[label].value).toString(16).toUpperCase();
+				while (number.length < 4) {
+					number = '0' + number;
+				}
+
+				infoTableTemp.push({
+					label: words[0][words[0].length - 1] === ',' ? label : null,
+					address: lineCounter.toUpperCase(),
+					instruction: words[0][words[0].length - 1] === ',' ? words.slice(1).join(' ') : lines[i],
+					HEX: number
+				});
+			} catch (error) {
+				infoTableTemp.push({
+					label: words[0][words[0].length - 1] === ',' ? label : null,
+					address: lineCounter.toUpperCase(),
+					instruction: words[0][words[0].length - 1] === ',' ? words.slice(1).join(' ') : lines[i],
+					HEX: null
+				});
+			}
+
 			lineCounter = (parseInt(lineCounter, 16) + 1).toString(16).toUpperCase();
 		}
 
@@ -138,7 +183,6 @@ function App() {
 			)
 				continue;
 			const ins = infoTableTemp[i].instruction.split(' ')[0];
-			// console.log(ins);
 			if (
 				!instructions['memory'][ins] &&
 				!instructions['register'][ins] &&
@@ -159,19 +203,28 @@ function App() {
 				else infoTableTemp[i].HEX = instructions['memory'][words[0]]['direct'] + labels[words[1]].address;
 			}
 		}
+
+		for (let i = 0; i < infoTableTemp.length; i++) {
+			if (infoTableTemp[i].instruction === 'END' || infoTableTemp[i].instruction.split(' ')[0] === 'ORG') {
+				infoTableTemp.splice(i, 1);
+				i--;
+			}
+		}
 		setInfoTable([ ...infoTableTemp ]);
-		console.log(infoTable);
-		console.log(infoTable);
-		console.log(infoTable);
 		return true;
-		// console.log(infoTable);
 	};
 
 	return (
 		<div className="App">
 			<CodeForm onSubmit={onSubmit} />
-			<ComputerState error={error} onSubmit={onSubmit} />
-			<RAMTable infoTable={infoTable} code={code} />
+			<ComputerState
+				handleStep={handleStep}
+				registersAndFlags={registersAndFlags}
+				showStep={showStep}
+				error={error}
+				onSubmit={onSubmit}
+			/>
+			<RAMTable infoTable={infoTable} />
 		</div>
 	);
 }
