@@ -81,30 +81,159 @@ const createToInt = (size) => {
 	};
 };
 
-function App() {
+const initialRegistersAndFlags = {
+	SC: '0',
+	AR: '000',
+	IR: '0000',
+	DR: '0000',
+	AC: '0000',
+	TR: '0000',
+	INPR: '00',
+	OUTR: '00',
+	I: '0',
+	S: '0',
+	E: '0',
+	R: '0',
+	IEN: '0',
+	FGI: '0',
+	FGO: '0'
+};
+
+const normalizeString = (str, num) => {
+	while (str.length < num) str = '0' + str;
+	return str.toUpperCase();
+};
+
+const baseChanger = (numStr, numberOfbits, currentBase, newBase) => {
+	numStr = parseInt(numStr, currentBase);
+	numStr = numStr.toString(newBase);
+	numStr = normalizeString(numStr, numberOfbits);
+	return numStr;
+};
+
+const complement = (num, normalNum) => {
+	const temp = parseInt(num, 16);
+	let b = temp.toString(2);
+	b = normalizeString(b, 16);
+	let result = '';
+	for (let i = 0; i < b.length; i++) b[i] === '1' ? (result += '0') : (result += '1');
+	result = parseInt(result, 2).toString(16).toUpperCase();
+	result = normalizeString(result, normalNum);
+	return result;
+};
+
+const circulate = (num1, num2, direction) => {
+	const newNum = baseChanger(num1, 16, 16, 2);
+	if (direction === 'right') {
+		const result = num2 + newNum;
+		return [ parseInt(result.slice(0, result.length - 1), 2).toString(16).toUpperCase(), result[result.length - 1] ];
+	} else if (direction === 'left') {
+		const result = newNum + num2;
+		return [ parseInt(result.slice(1, result.length), 2).toString(16).toUpperCase(), result[0] ];
+	}
+};
+
+const calculateValue = (str, normalNum) => {
+	let result;
+	if (
+		str[0] === '8' ||
+		str[0] === '9' ||
+		str[0] === 'A' ||
+		str[0] === 'B' ||
+		str[0] === 'C' ||
+		str[0] === 'D' ||
+		str[0] === 'E' ||
+		str[0] === 'F'
+	) {
+		str = parseInt(complement(str, normalNum), 16);
+		str++;
+		result = parseInt('-' + str.toString());
+	} else {
+		result = parseInt(str, 16);
+	}
+	return result;
+};
+
+const App = () => {
+	const toInt16 = createToInt(16);
+	let [ registersAndFlags, setRegistersAndFlags ] = useState(initialRegistersAndFlags);
 	const [ error, setError ] = useState('');
 	const [ infoTable, setInfoTable ] = useState([]);
 	const [ showStep, setShowStep ] = useState(false);
-	const [ registersAndFlags, setRegistersAndFlags ] = useState({
-		SC: '0',
-		AR: '000',
-		IR: '0000',
-		DR: '0000',
-		AC: '0000',
-		TR: '0000',
-		INPR: '00',
-		OUTR: '00',
-		I: '0',
-		S: '0',
-		E: '0',
-		R: '0',
-		IEN: '0',
-		FGI: '0',
-		FGO: '0'
-	});
+	let [ lineNumber, setLineNumber ] = useState(0); //The line number which is getting executed by computer
+
+	const findRow = (ins) => {
+		return infoTable.filter((row) => row.address === ins)[0];
+	};
 
 	const handleStep = () => {
-		console.log('salam');
+		if (lineNumber === infoTable.length) {
+			setError('The program has ended');
+			setLineNumber(0);
+			return;
+		}
+		let temp = lineNumber;
+		const ins = infoTable[lineNumber].HEX;
+		//Check Memory instructions
+		switch (ins[0]) {
+			case '1':
+				const num1 = calculateValue(findRow(ins.slice(1)).HEX, 4);
+				const num2 = calculateValue(registersAndFlags.AC, 4);
+				setRegistersAndFlags({ ...registersAndFlags, AC: normalizeString(toInt16(num1 + num2).toString(16), 4) });
+				break;
+			case '2':
+				setRegistersAndFlags({ ...registersAndFlags, AC: findRow(ins.slice(1)).HEX });
+				break;
+		}
+
+		//Check Register and I/O instructions
+		switch (ins) {
+			case '7800':
+				setRegistersAndFlags({ ...registersAndFlags, AC: '0000' });
+				break;
+			case '7400':
+				setRegistersAndFlags({ ...registersAndFlags, E: '0' });
+				break;
+			case '7200':
+				setRegistersAndFlags({ ...registersAndFlags, AC: complement(registersAndFlags.AC, 4) });
+				break;
+			case '7100':
+				setRegistersAndFlags({ ...registersAndFlags, E: registersAndFlags.E === '1' ? '0' : '1' });
+				break;
+			case '7080':
+				const [ newAC, newE ] = circulate(registersAndFlags.AC, registersAndFlags.E, 'right');
+				setRegistersAndFlags({ ...registersAndFlags, AC: newAC, E: newE });
+				break;
+			case '7040':
+				const [ newAC1, newE1 ] = circulate(registersAndFlags.AC, registersAndFlags.E, 'left');
+				setRegistersAndFlags({ ...registersAndFlags, AC: newAC1, E: newE1 });
+				break;
+			case '7020':
+				setRegistersAndFlags({
+					...registersAndFlags,
+					AC: normalizeString(toInt16(calculateValue(registersAndFlags.AC, 4) + 1).toString(16), 4)
+				});
+				break;
+			case '7010':
+				if (calculateValue(registersAndFlags.AC, 4) > 0) temp++;
+				break;
+			case '7008':
+				if (calculateValue(registersAndFlags.AC, 4) < 0) temp++;
+				break;
+			case '7004':
+				if (calculateValue(registersAndFlags.AC, 4) === 0) temp++;
+				break;
+			case '7002':
+				if (parseInt(registersAndFlags.E, 2) === 0) temp++;
+				break;
+			case '7001':
+				temp--;
+				break;
+			case 'F400':
+				setRegistersAndFlags({ ...registersAndFlags, OUTR: registersAndFlags.AC.slice(2) });
+				break;
+		}
+		setLineNumber(temp + 1);
 	};
 
 	const handleError = (type, line) => {
@@ -115,6 +244,8 @@ function App() {
 	};
 
 	const onSubmit = (values) => {
+		setLineNumber(0);
+		setRegistersAndFlags({ ...initialRegistersAndFlags });
 		setInfoTable([]);
 		if (!values.code) return;
 		setError('');
@@ -124,6 +255,7 @@ function App() {
 	};
 
 	const compiler = (lines) => {
+		setLineNumber(0);
 		//First compile phase
 		let lineCounter = '0';
 		const labels = {};
@@ -150,7 +282,6 @@ function App() {
 				}
 			}
 			try {
-				const toInt16 = createToInt(16);
 				let number = toInt16(labels[label].value).toString(16).toUpperCase();
 				while (number.length < 4) {
 					number = '0' + number;
@@ -227,6 +358,6 @@ function App() {
 			<RAMTable infoTable={infoTable} />
 		</div>
 	);
-}
+};
 
 export default App;
