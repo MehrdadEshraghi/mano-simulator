@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Table } from 'reactstrap';
 import { Link, Element } from 'react-scroll';
 
 const RAMTable = ({ infoTable }) => {
-	console.log(infoTable);
-
 	useEffect(() => {
 		try {
 			document.querySelector('#link-scroll').click();
@@ -24,7 +22,6 @@ const RAMTable = ({ infoTable }) => {
 				else rows.push({ label: null, address: i.toString(16).toUpperCase(), instruction: '', HEX: '0000' });
 			}
 			let flag = true;
-			console.log(rows);
 			return (
 				<React.Fragment>
 					<div onClick={() => console.log('clicked')}>
