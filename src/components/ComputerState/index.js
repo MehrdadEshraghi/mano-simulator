@@ -11,93 +11,93 @@ const ComputerState = ({ onSubmit, error, showStep, registersAndFlags, handleSte
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>SC:</Label>
-							<Input defaultValue={SC} defaultValue="0" disabled />
+							<Input value={SC} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>AR:</Label>
-							<Input defaultValue={AR} disabled />
+							<Input value={AR} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>IR:</Label>
-							<Input defaultValue={IR} disabled />
+							<Input value={IR} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>DR:</Label>
-							<Input defaultValue={DR} disabled />
+							<Input value={DR} disabled />
 						</FormGroup>
 					</div>
 					<div className="col  col-lg-4 mt-4">
 						<FormGroup>
 							<Label>AC:</Label>
-							<Input defaultValue={AC} disabled />
+							<Input value={AC} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-4 mt-4">
 						<FormGroup>
 							<Label>TR:</Label>
-							<Input defaultValue={TR} disabled />
+							<Input value={TR} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-3 mt-4">
 						<FormGroup>
 							<Label>INPR:</Label>
-							<Input defaultValue={INPR} disabled />
+							<Input value={INPR} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-3 mt-4">
 						<FormGroup>
 							<Label>OUTR:</Label>
-							<Input defaultValue={OUTR} disabled />
+							<Input value={OUTR} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-5" />
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>I:</Label>
-							<Input defaultValue={I} disabled />
+							<Input value={I} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>S:</Label>
-							<Input defaultValue={S} disabled />
+							<Input value={S} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>E:</Label>
-							<Input defaultValue={E} disabled />
+							<Input value={E} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>R:</Label>
-							<Input defaultValue={R} disabled />
+							<Input value={R} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-4" />
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>IEN:</Label>
-							<Input defaultValue={IEN} disabled />
+							<Input value={IEN} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>FGI:</Label>
-							<Input defaultValue={FGI} disabled />
+							<Input value={FGI} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-2 my-4">
 						<FormGroup>
 							<Label>FGO:</Label>
-							<Input defaultValue={FGO} defaultValue="0" disabled />
+							<Input value={FGO} disabled />
 						</FormGroup>
 					</div>
 				</div>
