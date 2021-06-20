@@ -3,7 +3,7 @@ import { Form, FormGroup, Label, Input } from 'reactstrap';
 import Button from '@material-ui/core/Button';
 
 const ComputerState = ({ onSubmit, error, showStep, registersAndFlags, handleStep }) => {
-	const { SC, AR, IR, DR, AC, TR, INPR, OUTR, I, S, E, R, IEN, FGI, FGO } = registersAndFlags;
+	const { SC, PC, AR, IR, DR, AC, TR, INPR, OUTR, I, S, E, R, IEN, FGI, FGO } = registersAndFlags;
 	return (
 		<div className="p-4" style={{ width: '30%', backgroundColor: '#b3e5fc', borderRadius: '10%' }}>
 			<Form>
@@ -12,6 +12,12 @@ const ComputerState = ({ onSubmit, error, showStep, registersAndFlags, handleSte
 						<FormGroup>
 							<Label>SC:</Label>
 							<Input value={SC} disabled />
+						</FormGroup>
+					</div>
+					<div className="col col-lg-3 mt-4">
+						<FormGroup>
+							<Label>PC:</Label>
+							<Input value={PC} disabled />
 						</FormGroup>
 					</div>
 					<div className="col col-lg-4 mt-4">
@@ -56,7 +62,7 @@ const ComputerState = ({ onSubmit, error, showStep, registersAndFlags, handleSte
 							<Input value={OUTR} disabled />
 						</FormGroup>
 					</div>
-					<div className="col col-lg-5" />
+					<div className="col col-lg-2" />
 					<div className="col col-lg-2 mt-4">
 						<FormGroup>
 							<Label>I:</Label>
