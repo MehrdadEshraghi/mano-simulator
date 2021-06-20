@@ -83,6 +83,7 @@ const createToInt = (size) => {
 
 const initialRegistersAndFlags = {
 	SC: '0',
+	PC: '000',
 	AR: '000',
 	IR: '0000',
 	DR: '0000',
@@ -162,27 +163,104 @@ const App = () => {
 	const [ showStep, setShowStep ] = useState(false);
 	let [ lineNumber, setLineNumber ] = useState(0); //The line number which is getting executed by computer
 
-	const findRow = (ins) => {
+	const findRow = (ins, indirect) => {
+		if (indirect) {
+			const first = infoTable.filter((row) => row.address === ins)[0];
+			return infoTable.filter((row) => row.address === first.HEX.slice(1))[0];
+		}
 		return infoTable.filter((row) => row.address === ins)[0];
 	};
 
+	const and = (num1, num2) => {
+		let result = '';
+		for (let i = 0; i < 16; i++) {
+			result += num1[i] !== num2[i] ? '0' : num1[i] === '1' ? '1' : '0';
+		}
+		console.log(result);
+
+		return normalizeString(parseInt(result, 2).toString(16), 4);
+	};
+
 	const handleStep = () => {
-		if (lineNumber === infoTable.length) {
+		if (lineNumber === 'FFF')
+			if (infoTable[lineNumber].HEX === '0000' && !infoTable[lineNumber].instruction && !infoTable[lineNumber].label) {
+				setLineNumber(lineNumber + 1);
+				return;
+			}
+		if (lineNumber + 1 >= infoTable.length) {
 			setError('The program has ended');
-			setLineNumber(0);
+			return;
+		}
+
+		if (
+			infoTable[lineNumber].instruction.split(' ')[0] === 'HEX' ||
+			infoTable[lineNumber].instruction.split(' ')[0] === 'DEC'
+		) {
+			setLineNumber(lineNumber + 1);
 			return;
 		}
 		let temp = lineNumber;
+		console.log(lineNumber);
 		const ins = infoTable[lineNumber].HEX;
 		//Check Memory instructions
+		let num1, num2, row, infoTableTemp, i;
 		switch (ins[0]) {
+			case '8':
+			case '0':
+				num1 = normalizeString(parseInt(registersAndFlags.AC, 16).toString(2), 16);
+				num2 = normalizeString(parseInt(findRow(ins.slice(1), ins[0] === '0' ? false : true).HEX, 16).toString(2), 16);
+				setRegistersAndFlags({ ...registersAndFlags, AC: and(num1, num2) });
+				break;
+			case '9':
 			case '1':
-				const num1 = calculateValue(findRow(ins.slice(1)).HEX, 4);
-				const num2 = calculateValue(registersAndFlags.AC, 4);
+				num1 = calculateValue(findRow(ins.slice(1), ins[0] === '1' ? false : true).HEX, 4);
+				num2 = calculateValue(registersAndFlags.AC, 4);
 				setRegistersAndFlags({ ...registersAndFlags, AC: normalizeString(toInt16(num1 + num2).toString(16), 4) });
 				break;
+			case 'A':
 			case '2':
-				setRegistersAndFlags({ ...registersAndFlags, AC: findRow(ins.slice(1)).HEX });
+				setRegistersAndFlags({ ...registersAndFlags, AC: findRow(ins.slice(1), ins[0] === '2' ? false : true).HEX });
+				break;
+			case 'B':
+			case '3':
+				row = findRow(ins.slice(1), ins[0] === '3' ? false : true);
+				row.HEX = registersAndFlags.AC;
+				row.instruction = null;
+				infoTableTemp = infoTable;
+				for (i = 0; i < infoTableTemp.length; i++) if (infoTableTemp[i].address === row.address) infoTableTemp[i] = row;
+				setInfoTable([ ...infoTableTemp ]);
+				break;
+			case 'C':
+			case '4':
+				row = findRow(ins.slice(1), ins[0] === '4' ? false : true);
+				let index = infoTableTemp.findIndex((r) => r.address === row.address);
+				setLineNumber(index);
+				return;
+			case 'D':
+			case '5':
+				row = findRow(ins.slice(1), ins[0] === '5' ? false : true);
+				infoTableTemp = infoTable;
+				let index1 = infoTableTemp.findIndex((r) => r.address === row.address);
+				infoTableTemp[index1].HEX = normalizeString(infoTableTemp[lineNumber].address, 4);
+				infoTableTemp[index1].instruction = null;
+				setInfoTable([ ...infoTableTemp ]);
+				setLineNumber(index1 + 1);
+				return;
+			case 'E':
+			case '6':
+				row = findRow(ins.slice(1), ins[0] === '6' ? false : true);
+				infoTableTemp = infoTable;
+
+				let index3 = infoTableTemp.findIndex((r) => r.address === row.address);
+				row.instruction = null;
+				const decimalNum = calculateValue(row.HEX, 4) + 1;
+				row.HEX = normalizeString(toInt16(calculateValue(row.HEX, 4) + 1).toString(16), 4);
+				infoTableTemp[index3] = row;
+				setInfoTable([ ...infoTableTemp ]);
+				if (decimalNum === 0) {
+					setLineNumber(lineNumber + 2);
+					return;
+				}
 				break;
 		}
 
@@ -329,18 +407,40 @@ const App = () => {
 				if (!words[1]) return handleError('noAddress', i + 1);
 				else if (!labels[words[1]]) return handleError('invalidLabel', i + 1);
 
-				if ([ words[words.length - 1] ] === 'I')
+				if (words[words.length - 1] === 'I')
 					infoTableTemp[i].HEX = instructions['memory'][words[0]]['indirect'] + labels[words[1]].address;
 				else infoTableTemp[i].HEX = instructions['memory'][words[0]]['direct'] + labels[words[1]].address;
 			}
 		}
 
-		for (let i = 0; i < infoTableTemp.length; i++) {
+		for (let i = 0; i < infoTableTemp.length; i++)
+			if (!infoTableTemp[i].HEX)
+				if (infoTableTemp[i].label) {
+					const labelInstruntion = infoTableTemp[i].instruction.split(' ')[0];
+					if (instructions['register'][labelInstruntion]) {
+						infoTableTemp[i].HEX = instructions['register'][labelInstruntion];
+					} else if (instructions['memory'][labelInstruntion]) {
+						if (infoTableTemp[i].instruction.split(' ')[1] === 'I')
+							infoTableTemp[i].HEX = instructions['memory'][labelInstruntion].indirect;
+						else {
+							infoTableTemp[i].HEX = instructions['memory'][labelInstruntion].dorect;
+						}
+					} else if (instructions['IO'][labelInstruntion]) {
+						infoTableTemp[i].HEX = instructions['IO'][labelInstruntion];
+					} else {
+						for (let j = 0; j < infoTableTemp.length; j++)
+							if (labelInstruntion === infoTableTemp[j].label && i !== j)
+								infoTableTemp[i].HEX = normalizeString(infoTableTemp[j].address, 4);
+						if (!infoTableTemp[i].HEX) return handleError('invalidInstruction', i + 1);
+					}
+				}
+
+		for (let i = 0; i < infoTableTemp.length; i++)
 			if (infoTableTemp[i].instruction === 'END' || infoTableTemp[i].instruction.split(' ')[0] === 'ORG') {
 				infoTableTemp.splice(i, 1);
 				i--;
 			}
-		}
+
 		setInfoTable([ ...infoTableTemp ]);
 		return true;
 	};
