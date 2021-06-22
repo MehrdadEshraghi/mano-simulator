@@ -90,9 +90,8 @@ const initialRegistersAndFlags = {
 	AC: '0000',
 	TR: '0000',
 	INPR: '00',
-	OUTR: '00',
 	I: '0',
-	S: '0',
+	S: '1',
 	E: '0',
 	R: '0',
 	IEN: '0',
@@ -178,6 +177,15 @@ const App = () => {
 		return normalizeString(parseInt(result, 2).toString(16), 4);
 	};
 
+	const updateActiveRow = (rowNum) => {
+		let infoTableTemp = infoTable;
+		for (let row of infoTableTemp) {
+			row.active = false;
+		}
+		infoTableTemp[rowNum].active = true;
+		setInfoTable([ ...infoTableTemp ]);
+	};
+
 	const handleStep = () => {
 		if (
 			lineNumber + 1 > infoTable.length ||
@@ -202,7 +210,7 @@ const App = () => {
 
 		const ins = infoTable[lineNumber].HEX;
 		//Check Memory instructions
-		let num1, num2, row, infoTableTemp, i;
+		let num1, num2, row, infoTableTemp, newAR;
 		switch (ins[0]) {
 			case '8':
 			case '0':
@@ -212,18 +220,40 @@ const App = () => {
 					...registersAndFlags,
 					AC: and(num1, num2),
 					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
-					DR: findRow(ins.slice(1), ins[0] === '0' ? false : true).HEX
+					DR: findRow(ins.slice(1), ins[0] === '0' ? false : true).HEX,
+					I: ins[0] === '0' ? '0' : '1',
+					IR: infoTable[lineNumber].HEX,
+					AR:
+						ins[0] === '0'
+							? infoTable[lineNumber].HEX.slice(1)
+							: findRow(ins.slice(1), ins[0] === '0' ? false : true).HEX.slice(1)
 				});
 				break;
 			case '9':
 			case '1':
+				newAR = registersAndFlags.PC;
+				let newE = '0';
 				num1 = calculateValue(findRow(ins.slice(1), ins[0] === '1' ? false : true).HEX, 4);
 				num2 = calculateValue(registersAndFlags.AC, 4);
+				let result = num1 + num2;
+				result = result.toString(2);
+				if (result.length > 16 && result[16] !== '-') {
+					newE = result[16];
+					result = result.slice(0, 15);
+				}
+				result = parseInt(result, 2);
 				setRegistersAndFlags({
 					...registersAndFlags,
-					AC: normalizeString(toInt16(num1 + num2).toString(16), 4),
+					AC: normalizeString(toInt16(result).toString(16), 4),
 					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
-					DR: findRow(ins.slice(1), ins[0] === '1' ? false : true).HEX
+					DR: findRow(ins.slice(1), ins[0] === '1' ? false : true).HEX,
+					I: ins[0] === '1' ? '0' : '1',
+					E: newE,
+					AR:
+						ins[0] === '1'
+							? infoTable[lineNumber].HEX.slice(1)
+							: findRow(ins.slice(1), ins[0] === '1' ? false : true).HEX.slice(1),
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case 'A':
@@ -232,7 +262,13 @@ const App = () => {
 					...registersAndFlags,
 					AC: findRow(ins.slice(1), ins[0] === '2' ? false : true).HEX,
 					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
-					DR: findRow(ins.slice(1), ins[0] === '2' ? false : true).HEX
+					DR: findRow(ins.slice(1), ins[0] === '2' ? false : true).HEX,
+					I: ins[0] === '2' ? '0' : '1',
+					AR:
+						ins[0] === '2'
+							? infoTable[lineNumber].HEX.slice(1)
+							: findRow(ins.slice(1), ins[0] === '2' ? false : true).HEX.slice(1),
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case 'B':
@@ -241,22 +277,36 @@ const App = () => {
 				row.HEX = registersAndFlags.AC;
 				row.instruction = null;
 				infoTableTemp = infoTable;
-				for (i = 0; i < infoTableTemp.length; i++) if (infoTableTemp[i].address === row.address) infoTableTemp[i] = row;
+				for (let i = 0; i < infoTableTemp.length; i++)
+					if (infoTableTemp[i].address === row.address) infoTableTemp[i] = row;
 				setInfoTable([ ...infoTableTemp ]);
 				setRegistersAndFlags({
 					...registersAndFlags,
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					I: ins[0] === '3' ? '0' : '1',
+					AR:
+						ins[0] === '3'
+							? infoTable[lineNumber].HEX.slice(1)
+							: findRow(ins.slice(1), ins[0] === '3' ? false : true).HEX.slice(1),
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case 'C':
 			case '4':
+				infoTableTemp = infoTable;
 				row = findRow(ins.slice(1), ins[0] === '4' ? false : true);
 				let index = infoTableTemp.findIndex((r) => r.address === row.address);
 				setLineNumber(index);
 				setRegistersAndFlags({
 					...registersAndFlags,
-					PC: infoTableTemp[index],
-					DR: findRow(ins.slice(1), ins[0] === '4' ? false : true).HEX
+					PC: infoTableTemp[index].address,
+					DR: findRow(ins.slice(1), ins[0] === '4' ? false : true).HEX,
+					I: ins[0] === '4' ? '0' : '1',
+					AR:
+						ins[0] === '4'
+							? infoTable[lineNumber].HEX.slice(1)
+							: findRow(ins.slice(1), ins[0] === '4' ? false : true).HEX.slice(1),
+					IR: infoTable[lineNumber].HEX
 				});
 				return;
 			case 'D':
@@ -271,7 +321,16 @@ const App = () => {
 				setRegistersAndFlags({
 					...registersAndFlags,
 					PC: normalizeString((parseInt(infoTableTemp[index1].address, 16) + 1).toString(16), 3),
-					DR: findRow(ins.slice(1), ins[0] === '5' ? false : true).HEX
+					DR: findRow(ins.slice(1), ins[0] === '5' ? false : true).HEX,
+					I: ins[0] === '5' ? '0' : '1',
+					AR:
+						ins[0] === '5'
+							? normalizeString((parseInt(infoTable[lineNumber].HEX.slice(1), 16) + 1).toString(16), 3)
+							: normalizeString(
+									(parseInt(findRow(ins.slice(1), ins[0] === '5' ? false : true).HEX.slice(1), 16) + 1).toString(16),
+									3
+								),
+					IR: infoTable[lineNumber].HEX
 				});
 				return;
 			case 'E':
@@ -289,14 +348,26 @@ const App = () => {
 					setRegistersAndFlags({
 						...registersAndFlags,
 						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3),
-						DR: findRow(ins.slice(1), ins[0] === '6' ? false : true).HEX
+						DR: findRow(ins.slice(1), ins[0] === '6' ? false : true).HEX,
+						I: ins[0] === '6' ? '0' : '1',
+						AR:
+							ins[0] === '6'
+								? infoTable[lineNumber].HEX.slice(1)
+								: findRow(ins.slice(1), ins[0] === '6' ? false : true).HEX.slice(1),
+						IR: infoTable[lineNumber].HEX
 					});
 					return;
 				} else {
 					setRegistersAndFlags({
 						...registersAndFlags,
 						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
-						DR: findRow(ins.slice(1), ins[0] === '6' ? false : true).HEX
+						DR: findRow(ins.slice(1), ins[0] === '6' ? false : true).HEX,
+						I: ins[0] === '6' ? '0' : '1',
+						AR:
+							ins[0] === '6'
+								? infoTable[lineNumber].HEX.slice(1)
+								: findRow(ins.slice(1), ins[0] === '6' ? false : true).HEX.slice(1),
+						IR: infoTable[lineNumber].HEX
 					});
 				}
 				break;
@@ -308,28 +379,36 @@ const App = () => {
 				setRegistersAndFlags({
 					...registersAndFlags,
 					AC: '0000',
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '800',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7400':
 				setRegistersAndFlags({
 					...registersAndFlags,
 					E: '0',
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '400',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7200':
 				setRegistersAndFlags({
 					...registersAndFlags,
 					AC: complement(registersAndFlags.AC, 4),
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '200',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7100':
 				setRegistersAndFlags({
 					...registersAndFlags,
 					E: registersAndFlags.E === '1' ? '0' : '1',
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '100',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7080':
@@ -338,7 +417,9 @@ const App = () => {
 					...registersAndFlags,
 					AC: newAC,
 					E: newE,
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '080',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7040':
@@ -347,14 +428,18 @@ const App = () => {
 					...registersAndFlags,
 					AC: newAC1,
 					E: newE1,
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '040',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7020':
 				setRegistersAndFlags({
 					...registersAndFlags,
 					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
-					AC: normalizeString(toInt16(calculateValue(registersAndFlags.AC, 4) + 1).toString(16), 4)
+					AC: normalizeString(toInt16(calculateValue(registersAndFlags.AC, 4) + 1).toString(16), 4),
+					AR: '020',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 			case '7010':
@@ -362,7 +447,9 @@ const App = () => {
 					setLineNumber(lineNumber + 2);
 					setRegistersAndFlags({
 						...registersAndFlags,
-						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3)
+						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3),
+						AR: '010',
+						IR: infoTable[lineNumber].HEX
 					});
 					return;
 				}
@@ -372,7 +459,9 @@ const App = () => {
 					setLineNumber(lineNumber + 2);
 					setRegistersAndFlags({
 						...registersAndFlags,
-						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3)
+						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3),
+						AR: '008',
+						IR: infoTable[lineNumber].HEX
 					});
 					return;
 				}
@@ -382,7 +471,9 @@ const App = () => {
 					setLineNumber(lineNumber + 2);
 					setRegistersAndFlags({
 						...registersAndFlags,
-						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3)
+						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3),
+						AR: '008',
+						IR: infoTable[lineNumber].HEX
 					});
 					return;
 				}
@@ -392,22 +483,31 @@ const App = () => {
 					setLineNumber(lineNumber + 2);
 					setRegistersAndFlags({
 						...registersAndFlags,
-						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3)
+						PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 2).toString(16), 3),
+						AR: '002',
+						IR: infoTable[lineNumber].HEX
 					});
 					return;
 				}
 				break;
 			case '7001':
+				setRegistersAndFlags({ ...registersAndFlags, S: '0', IR: infoTable[lineNumber].HEX, AR: '001' });
 				setError('The program has ended');
 				return;
 			case 'F400':
 				setRegistersAndFlags({
 					...registersAndFlags,
 					OUTR: registersAndFlags.AC.slice(2),
-					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+					PC: normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3),
+					AR: '400',
+					IR: infoTable[lineNumber].HEX
 				});
 				break;
 		}
+		try {
+			updateActiveRow(lineNumber + 1);
+		} catch (error) {}
+
 		setLineNumber(lineNumber + 1);
 	};
 
