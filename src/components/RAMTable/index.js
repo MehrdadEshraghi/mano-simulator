@@ -24,7 +24,7 @@ const RAMTable = ({ infoTable }) => {
 			let flag = true;
 			return (
 				<React.Fragment>
-					<div onClick={() => console.log('clicked')}>
+					<div>
 						<Link
 							style={{ display: 'none' }}
 							id="link-scroll"
@@ -58,7 +58,7 @@ const RAMTable = ({ infoTable }) => {
 									if (t.instruction && flag) {
 										flag = false;
 										return (
-											<tr name="my-scroll" key={index}>
+											<tr className={t.active ? 'table-info' : null} name="my-scroll" key={index}>
 												<td>{t.label}</td>
 												<td>{t.address}</td>
 												<td>{t.instruction}</td>
@@ -67,7 +67,7 @@ const RAMTable = ({ infoTable }) => {
 										);
 									}
 									return (
-										<tr key={index}>
+										<tr className={t.active ? 'table-info' : null} key={index}>
 											<td>{t.label}</td>
 											<td>{t.address}</td>
 											<td>{t.instruction}</td>
