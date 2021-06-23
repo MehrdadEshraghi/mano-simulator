@@ -3,156 +3,17 @@ import CodeForm from '../CodeForm';
 import ComputerState from '../ComputerState';
 import RAMTable from '../RAMTable';
 import './styles.css';
-
-const errorsText = {
-	syntax: 'Compiler: Syntax error in line ',
-	expectedEND: 'Compiler: Expected END pseudo instruction',
-	invalidInstruction: 'Compiler: Invalid instruction in line ',
-	noAddress: 'Compiler: No address was given in line ',
-	invalidLabel: 'Compiler: Invalid label in line '
-};
-
-const instructions = {
-	memory: {
-		AND: {
-			direct: '0',
-			indirect: '8'
-		},
-		ADD: {
-			direct: '1',
-			indirect: '9'
-		},
-		LDA: {
-			direct: '2',
-			indirect: 'A'
-		},
-		STA: {
-			direct: '3',
-			indirect: 'B'
-		},
-		BUN: {
-			direct: '4',
-			indirect: 'C'
-		},
-		BSA: {
-			direct: '5',
-			indirect: 'D'
-		},
-		ISZ: {
-			direct: '6',
-			indirect: 'E'
-		}
-	},
-	register: {
-		CLA: '7800',
-		CLE: '7400',
-		CMA: '7200',
-		CME: '7100',
-		CIR: '7080',
-		CIL: '7040',
-		INC: '7020',
-		SPA: '7010',
-		SNA: '7008',
-		SZA: '7004',
-		SZE: '7002',
-		HLT: '7001'
-	},
-	IO: {
-		INP: 'F800',
-		OUT: 'F400',
-		SKI: 'F200',
-		SKO: 'F100',
-		ION: 'F080',
-		IOF: 'F040'
-	}
-};
-
-const createToInt = (size) => {
-	if (size < 2) throw new Error('Minimum size is 2');
-	else if (size > 64) throw new Error('Maximum size is 64');
-
-	const maxValue = (1 << (size - 1)) - 1;
-	const minValue = -maxValue - 1;
-	return (value) => {
-		if (value > maxValue || value < minValue) throw new Error(`Int${size} overflow`);
-
-		if (value < 0) return (1 << size) + value;
-		else return value;
-	};
-};
-
-const initialRegistersAndFlags = {
-	SC: '0',
-	PC: '000',
-	AR: '000',
-	IR: '0000',
-	DR: '0000',
-	AC: '0000',
-	TR: '0000',
-	INPR: '00',
-	I: '0',
-	S: '1',
-	E: '0',
-	R: '0',
-	IEN: '0',
-	FGI: '0',
-	FGO: '0'
-};
-
-const normalizeString = (str, num) => {
-	while (str.length < num) str = '0' + str;
-	return str.toUpperCase();
-};
-
-const baseChanger = (numStr, numberOfbits, currentBase, newBase) => {
-	numStr = parseInt(numStr, currentBase);
-	numStr = numStr.toString(newBase);
-	numStr = normalizeString(numStr, numberOfbits);
-	return numStr;
-};
-
-const complement = (num, normalNum) => {
-	const temp = parseInt(num, 16);
-	let b = temp.toString(2);
-	b = normalizeString(b, 16);
-	let result = '';
-	for (let i = 0; i < b.length; i++) b[i] === '1' ? (result += '0') : (result += '1');
-	result = parseInt(result, 2).toString(16).toUpperCase();
-	result = normalizeString(result, normalNum);
-	return result;
-};
-
-const circulate = (num1, num2, direction) => {
-	const newNum = baseChanger(num1, 16, 16, 2);
-	if (direction === 'right') {
-		const result = num2 + newNum;
-		return [ parseInt(result.slice(0, result.length - 1), 2).toString(16).toUpperCase(), result[result.length - 1] ];
-	} else if (direction === 'left') {
-		const result = newNum + num2;
-		return [ parseInt(result.slice(1, result.length), 2).toString(16).toUpperCase(), result[0] ];
-	}
-};
-
-const calculateValue = (str, normalNum) => {
-	let result;
-	if (
-		str[0] === '8' ||
-		str[0] === '9' ||
-		str[0] === 'A' ||
-		str[0] === 'B' ||
-		str[0] === 'C' ||
-		str[0] === 'D' ||
-		str[0] === 'E' ||
-		str[0] === 'F'
-	) {
-		str = parseInt(complement(str, normalNum), 16);
-		str++;
-		result = parseInt('-' + str.toString());
-	} else {
-		result = parseInt(str, 16);
-	}
-	return result;
-};
+import {
+	errorsText,
+	instructions,
+	createToInt,
+	initialRegistersAndFlags,
+	normalizeString,
+	complement,
+	circulate,
+	calculateValue,
+	and
+} from '../../utils';
 
 const App = () => {
 	const toInt16 = createToInt(16);
@@ -165,16 +26,16 @@ const App = () => {
 	const findRow = (ins, indirect) => {
 		if (indirect) {
 			const first = infoTable.filter((row) => row.address === ins)[0];
-			return infoTable.filter((row) => row.address === first.HEX.slice(1))[0];
+			const result = infoTable.filter((row) => row.address === first.HEX.slice(1))[0];
+			if (!result) {
+				if (first) {
+					return { label: null, address: first.address, instruction: '', HEX: '0000' };
+				}
+				return { label: null, address: ins.toString(16).toUpperCase(), instruction: '', HEX: '0000' };
+			}
+			return result;
 		}
 		return infoTable.filter((row) => row.address === ins)[0];
-	};
-
-	const and = (num1, num2) => {
-		let result = '';
-		for (let i = 0; i < 16; i++) result += num1[i] !== num2[i] ? '0' : num1[i] === '1' ? '1' : '0';
-
-		return normalizeString(parseInt(result, 2).toString(16), 4);
 	};
 
 	const updateActiveRow = (rowNum) => {
@@ -210,7 +71,7 @@ const App = () => {
 
 		const ins = infoTable[lineNumber].HEX;
 		//Check Memory instructions
-		let num1, num2, row, infoTableTemp, newAR;
+		let num1, num2, row, infoTableTemp;
 		switch (ins[0]) {
 			case '8':
 			case '0':
@@ -231,7 +92,6 @@ const App = () => {
 				break;
 			case '9':
 			case '1':
-				newAR = registersAndFlags.PC;
 				let newE = '0';
 				num1 = calculateValue(findRow(ins.slice(1), ins[0] === '1' ? false : true).HEX, 4);
 				num2 = calculateValue(registersAndFlags.AC, 4);
@@ -296,11 +156,10 @@ const App = () => {
 				infoTableTemp = infoTable;
 				row = findRow(ins.slice(1), ins[0] === '4' ? false : true);
 				let index = infoTableTemp.findIndex((r) => r.address === row.address);
-				setLineNumber(index);
 				setRegistersAndFlags({
 					...registersAndFlags,
 					PC: infoTableTemp[index].address,
-					DR: findRow(ins.slice(1), ins[0] === '4' ? false : true).HEX,
+					// DR: findRow(ins.slice(1), ins[0] === '4' ? false : true).HEX,
 					I: ins[0] === '4' ? '0' : '1',
 					AR:
 						ins[0] === '4'
@@ -308,6 +167,7 @@ const App = () => {
 							: findRow(ins.slice(1), ins[0] === '4' ? false : true).HEX.slice(1),
 					IR: infoTable[lineNumber].HEX
 				});
+				setLineNumber(ins[0] === '4' ? index : index + 1);
 				return;
 			case 'D':
 			case '5':
@@ -370,6 +230,8 @@ const App = () => {
 						IR: infoTable[lineNumber].HEX
 					});
 				}
+				break;
+			default:
 				break;
 		}
 
@@ -491,7 +353,12 @@ const App = () => {
 				}
 				break;
 			case '7001':
-				setRegistersAndFlags({ ...registersAndFlags, S: '0', IR: infoTable[lineNumber].HEX, AR: '001' });
+				setRegistersAndFlags({
+					...registersAndFlags,
+					S: '0',
+					IR: infoTable[lineNumber].HEX,
+					AR: '001'
+				});
 				setError('The program has ended');
 				return;
 			case 'F400':
@@ -502,6 +369,8 @@ const App = () => {
 					AR: '400',
 					IR: infoTable[lineNumber].HEX
 				});
+				break;
+			default:
 				break;
 		}
 		try {
@@ -582,24 +451,39 @@ const App = () => {
 
 		//Second compile phase
 		for (let i = 0; i < infoTableTemp.length; i++) {
-			if (
-				infoTableTemp[i].instruction === 'END' ||
-				infoTableTemp[i].instruction.split(' ')[0] === 'ORG' ||
-				infoTableTemp[i].label
-			)
-				continue;
+			if (infoTableTemp[i].instruction === 'END' || infoTableTemp[i].instruction.split(' ')[0] === 'ORG') continue;
+			const fullInstruction = infoTableTemp[i].instruction.split(' ');
 			const ins = infoTableTemp[i].instruction.split(' ')[0];
 			if (
 				!instructions['memory'][ins] &&
 				!instructions['register'][ins] &&
 				!instructions['IO'][ins] &&
 				!infoTableTemp[i].label
-			)
+			) {
 				return handleError('invalidInstruction', i + 1);
+			}
 
-			if (instructions['register'][ins]) infoTableTemp[i].HEX = instructions['register'][ins];
-			else if (instructions['IO'][ins]) infoTableTemp[i].HEX = instructions['IO'][ins];
-			else {
+			if (instructions['register'][ins]) {
+				if (fullInstruction[1]) {
+					return handleError('syntax', i + 1);
+				}
+				infoTableTemp[i].HEX = instructions['register'][ins];
+			} else if (instructions['IO'][ins]) {
+				if (fullInstruction[1]) {
+					return handleError('syntax', i + 1);
+				}
+				infoTableTemp[i].HEX = instructions['IO'][ins];
+			} else if (ins === 'DEC') {
+				infoTableTemp[i].HEX = normalizeString(
+					toInt16(parseInt(infoTableTemp[i].instruction.split(' ')[1])).toString(16),
+					4
+				);
+			} else if (ins === 'HEX') {
+				infoTableTemp[i].HEX = normalizeString(infoTableTemp[i].instruction.split(' ')[1], 4);
+			} else {
+				if ((fullInstruction[2] === 'I' && fullInstruction[3]) || (fullInstruction[2] && fullInstruction[2] !== 'I')) {
+					return handleError('syntax', i + 1);
+				}
 				const words = infoTableTemp[i].instruction.split(' ');
 				if (!words[1]) return handleError('noAddress', i + 1);
 				else if (!labels[words[1]]) return handleError('invalidLabel', i + 1);
@@ -617,18 +501,23 @@ const App = () => {
 					if (instructions['register'][labelInstruntion]) {
 						infoTableTemp[i].HEX = instructions['register'][labelInstruntion];
 					} else if (instructions['memory'][labelInstruntion]) {
-						if (infoTableTemp[i].instruction.split(' ')[1] === 'I')
-							infoTableTemp[i].HEX = instructions['memory'][labelInstruntion].indirect;
-						else {
-							infoTableTemp[i].HEX = instructions['memory'][labelInstruntion].dorect;
-						}
+						const temp = infoTableTemp[i].instruction.split(' ');
+						if (!temp[1]) return handleError('noAddress', i + 1);
+						else if (!labels[temp[1]]) return handleError('invalidLabel', i + 1);
+
+						if (temp[temp.length - 1] === 'I')
+							infoTableTemp[i].HEX = instructions['memory'][temp[0]]['indirect'] + labels[temp[1]].address;
+						else infoTableTemp[i].HEX = instructions['memory'][temp[0]]['direct'] + labels[temp[1]].address;
 					} else if (instructions['IO'][labelInstruntion]) {
 						infoTableTemp[i].HEX = instructions['IO'][labelInstruntion];
 					} else {
 						for (let j = 0; j < infoTableTemp.length; j++)
 							if (labelInstruntion === infoTableTemp[j].label && i !== j)
 								infoTableTemp[i].HEX = normalizeString(infoTableTemp[j].address, 4);
-						if (!infoTableTemp[i].HEX) return handleError('invalidInstruction', i + 1);
+
+						if (!infoTableTemp[i].HEX) {
+							return handleError('invalidInstruction', i + 1);
+						}
 					}
 				}
 
