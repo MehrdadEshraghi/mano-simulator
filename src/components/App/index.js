@@ -15,6 +15,8 @@ import {
 	and
 } from '../../utils';
 
+let haltFlag = false;
+
 const App = () => {
 	const toInt16 = createToInt(16);
 	let [ registersAndFlags, setRegistersAndFlags ] = useState(initialRegistersAndFlags);
@@ -357,9 +359,13 @@ const App = () => {
 					...registersAndFlags,
 					S: '0',
 					IR: infoTable[lineNumber].HEX,
-					AR: '001'
+					AR: '001',
+					PC: !haltFlag
+						? normalizeString((parseInt(registersAndFlags.PC, 16) + 1).toString(16), 3)
+						: registersAndFlags.PC
 				});
 				setError('The program has ended');
+				haltFlag = true;
 				return;
 			case 'F400':
 				setRegistersAndFlags({
@@ -399,6 +405,7 @@ const App = () => {
 	};
 
 	const compiler = (lines) => {
+		haltFlag = false;
 		setLineNumber(0);
 		//First compile phase
 		let lineCounter = '0';
@@ -407,6 +414,7 @@ const App = () => {
 		let label;
 		if (lines[lines.length - 1] !== 'END') return handleError('expectedEND');
 		for (let i = 0; i < lines.length; i++) {
+			let directNumber = '';
 			const words = lines[i].split(' ');
 			const is_label = words[0][words[0].length - 1];
 			if (words[0] === 'ORG') {
@@ -424,18 +432,16 @@ const App = () => {
 					if (!words[2]) return handleError('syntax', i + 1);
 					labels[label].value = parseInt(words[2]);
 				}
-			}
-			try {
-				let number = toInt16(labels[label].value).toString(16).toUpperCase();
-				while (number.length < 4) {
-					number = '0' + number;
-				}
+			} else if (words[0] === 'DEC') directNumber = normalizeString(toInt16(parseInt(words[0])).toString(16), 4);
+			else if (words[0] === 'HEX') directNumber = normalizeString(toInt16(parseInt(words[0], 16)).toString(16), 4);
 
+			try {
+				let result = directNumber ? directNumber : normalizeString(toInt16(labels[label].value).toString(16), 4);
 				infoTableTemp.push({
 					label: words[0][words[0].length - 1] === ',' ? label : null,
 					address: lineCounter.toUpperCase(),
 					instruction: words[0][words[0].length - 1] === ',' ? words.slice(1).join(' ') : lines[i],
-					HEX: number
+					HEX: result
 				});
 			} catch (error) {
 				infoTableTemp.push({
@@ -458,36 +464,31 @@ const App = () => {
 				!instructions['memory'][ins] &&
 				!instructions['register'][ins] &&
 				!instructions['IO'][ins] &&
-				!infoTableTemp[i].label
-			) {
+				!infoTableTemp[i].label &&
+				ins !== 'HEX' &&
+				ins !== 'DEC'
+			)
 				return handleError('invalidInstruction', i + 1);
-			}
 
 			if (instructions['register'][ins]) {
-				if (fullInstruction[1]) {
-					return handleError('syntax', i + 1);
-				}
+				if (fullInstruction[1]) return handleError('syntax', i + 1);
 				infoTableTemp[i].HEX = instructions['register'][ins];
 			} else if (instructions['IO'][ins]) {
-				if (fullInstruction[1]) {
-					return handleError('syntax', i + 1);
-				}
+				if (fullInstruction[1]) return handleError('syntax', i + 1);
 				infoTableTemp[i].HEX = instructions['IO'][ins];
-			} else if (ins === 'DEC') {
+			} else if (ins === 'DEC')
 				infoTableTemp[i].HEX = normalizeString(
 					toInt16(parseInt(infoTableTemp[i].instruction.split(' ')[1])).toString(16),
 					4
 				);
-			} else if (ins === 'HEX') {
-				infoTableTemp[i].HEX = normalizeString(infoTableTemp[i].instruction.split(' ')[1], 4);
-			} else {
+			else if (ins === 'HEX') infoTableTemp[i].HEX = normalizeString(infoTableTemp[i].instruction.split(' ')[1], 4);
+			else {
 				if ((fullInstruction[2] === 'I' && fullInstruction[3]) || (fullInstruction[2] && fullInstruction[2] !== 'I')) {
 					return handleError('syntax', i + 1);
 				}
 				const words = infoTableTemp[i].instruction.split(' ');
 				if (!words[1]) return handleError('noAddress', i + 1);
 				else if (!labels[words[1]]) return handleError('invalidLabel', i + 1);
-
 				if (words[words.length - 1] === 'I')
 					infoTableTemp[i].HEX = instructions['memory'][words[0]]['indirect'] + labels[words[1]].address;
 				else infoTableTemp[i].HEX = instructions['memory'][words[0]]['direct'] + labels[words[1]].address;
@@ -508,9 +509,8 @@ const App = () => {
 						if (temp[temp.length - 1] === 'I')
 							infoTableTemp[i].HEX = instructions['memory'][temp[0]]['indirect'] + labels[temp[1]].address;
 						else infoTableTemp[i].HEX = instructions['memory'][temp[0]]['direct'] + labels[temp[1]].address;
-					} else if (instructions['IO'][labelInstruntion]) {
-						infoTableTemp[i].HEX = instructions['IO'][labelInstruntion];
-					} else {
+					} else if (instructions['IO'][labelInstruntion]) infoTableTemp[i].HEX = instructions['IO'][labelInstruntion];
+					else {
 						for (let j = 0; j < infoTableTemp.length; j++)
 							if (labelInstruntion === infoTableTemp[j].label && i !== j)
 								infoTableTemp[i].HEX = normalizeString(infoTableTemp[j].address, 4);
